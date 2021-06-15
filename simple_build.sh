@@ -3,4 +3,5 @@ set -e
 cd build
 cmake ..
 make
-./MyProject
+cd ..
+./build/MemStrings ./samples/problem

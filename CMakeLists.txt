@@ -7,8 +7,8 @@ option(ZYDIS_BUILD_TOOLS "" OFF)
 option(ZYDIS_BUILD_EXAMPLES "" OFF)
 add_subdirectory("deps/zydis")
 
-# Add our project executable
-add_executable("MyProject" "src/myproject.cpp")
+# Ok our new executable
+add_executable("MemStrings" "src/memstrings.cpp")
 
-# Have CMake link our project executable against Zydis.
-target_link_libraries("MyProject" PRIVATE "Zydis")
+# Now link it in with Zydis!
+target_link_libraries("MemStrings" PRIVATE "Zydis")
