@@ -6,6 +6,7 @@ project(AutoRev VERSION 0.0.1 LANGUAGES CXX)
 option(ZYDIS_BUILD_TOOLS "" OFF)
 option(ZYDIS_BUILD_EXAMPLES "" OFF)
 add_subdirectory("deps/zydis")
+add_subdirectory("deps/elf-parser")
 
 # Ok our new executable
 add_executable("MemStrings" "src/memstrings.cpp" "src/debugger.cpp" "src/debugger.h" "src/zydisHelper.h")
