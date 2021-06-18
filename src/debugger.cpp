@@ -16,6 +16,7 @@
 #include <sys/personality.h>
 #include <Zydis/Zydis.h>
 #include <vector>
+#include <elf_parser.hpp>
 
 using namespace std;
 
@@ -25,6 +26,11 @@ void Debugger::initialize_zydis(bool bit_64){
 }
 
 Debugger::Debugger(char* processName, char** processArgs){
+    //First load the elf
+    string name = processName;
+    elf_parser::Elf_parser parsed = elf_parser::Elf_parser(name);
+    Elf64_Ehdr *ehdr = (Elf64_Ehdr*)parsed.get_memory_map();
+    this->entry = ehdr->e_entry + 0x555555554000;
     this->initialize_zydis(true);
     pid_t pid = fork();
     if (pid){
@@ -35,6 +41,7 @@ Debugger::Debugger(char* processName, char** processArgs){
         if (errno != 0){
             perror("Error on startup in Debugger::Debugger");
         }
+        this->complete_exec();
     } else {
         //If we are the forkee
         //We need to set ourselves up for the ptrace
@@ -46,12 +53,43 @@ Debugger::Debugger(char* processName, char** processArgs){
     }
 }
 
+string Debugger::get_disasm(){
+    user_regs_struct registers = this->get_registers();
+    ZydisDecodedInstruction instruction = this->load_instruction(registers.rip);
+    char buffer[128];
+    ZydisFormatterFormatInstruction(&this->formatter, &instruction, buffer, sizeof(buffer),
+            registers.rip);
+    return string(buffer);
+}
+
 void Debugger::complete_exec(){
     int status;
     ptrace(PTRACE_SETOPTIONS, this->pid, 0, PTRACE_O_TRACEEXEC);
     ptrace(PTRACE_CONT, pid, 0, 0);
     if (errno != 0){
         perror("Error in Debugger::complete_exec");
+        errno = 0;
+    }
+    waitpid(pid, &status, 0);
+}
+
+void Debugger::complete_syscall(){
+    int status;
+    ptrace(PTRACE_SETOPTIONS, this->pid, 0, PTRACE_O_TRACESYSGOOD);
+    ptrace(PTRACE_CONT, pid, 0, 0);
+    if (errno != 0){
+        perror("Error in Debugger::complete_syscall");
+        errno = 0;
+    }
+    waitpid(pid, &status, 0);
+}
+
+void Debugger::complete_entry(){
+    int status;
+    ptrace(PTRACE_SETOPTIONS, this->pid, 0, PTRACE_O_TRACESYSGOOD);
+    ptrace(PTRACE_CONT, pid, 0, 0);
+    if (errno != 0){
+        perror("Error in Debugger::complete_syscall");
         errno = 0;
     }
     waitpid(pid, &status, 0);
@@ -100,6 +138,36 @@ int Debugger::get_word(long location){
         return -1;
     }
     return read_word;
+}
+
+void Debugger::set_word(long location, int value){
+    int read_word = ptrace(PTRACE_POKEDATA, this->pid, location, value);
+    if (errno != 0){
+        perror("Error in Debugger::set_word");
+        errno = 0;
+    }
+}
+
+void Debugger::set_byte(long location, char value){
+    long aligned_location = location - (location % 4);
+    int valued = ((int) value) & 0xff;
+    int shift = (location % 4) * 8;
+    unsigned int mask = 0xffffffff ^ (0xff << shift);
+    unsigned int before = this->get_word(aligned_location);
+    cout << hex << before << dec << endl;
+    cout << hex << mask << dec << endl;
+    cout << hex << (before & mask) << dec << endl;
+    cout << hex << (int) valued << dec << endl;
+    cout << hex << (int) shift << dec << endl;
+    unsigned int result = (before & mask) | (valued << shift);
+    this->set_word(aligned_location, result);
+}
+
+char Debugger::get_byte(long location){
+    long aligned_location = location - (location % 4);
+    int shift = (location % 4) * 8;
+    unsigned int before = this->get_word(aligned_location);
+    return  (before >> shift) & 0xff;
 }
 
 ZydisDecodedInstruction Debugger::load_instruction(long rip){

@@ -107,6 +107,8 @@ void loadBuffer(Debugger* dbg, long location, char* result, int* length){
 
 int main(int argc, char** argv){
     Debugger dbg = Debugger(argv[1], argv+1);
+    cout << hex << dbg.entry << dec << endl;
+    cout << dbg.get_disasm() << endl;
     long* locations = new long[32];
     char* current_string = new char[1024];
     int string_length;

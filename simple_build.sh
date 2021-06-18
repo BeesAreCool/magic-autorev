@@ -1,3 +1,4 @@
+git submodule foreach git pull
 mkdir build
 set -e
 cd build
