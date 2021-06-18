@@ -17,6 +17,7 @@
 #include <Zydis/Zydis.h>
 #include <vector>
 #include <elf_parser.hpp>
+#include <string.h>
 
 using namespace std;
 
@@ -42,6 +43,7 @@ Debugger::Debugger(char* processName, char** processArgs){
             perror("Error on startup in Debugger::Debugger");
         }
         this->complete_exec();
+        this->complete_entry();
     } else {
         //If we are the forkee
         //We need to set ourselves up for the ptrace
@@ -86,13 +88,24 @@ void Debugger::complete_syscall(){
 
 void Debugger::complete_entry(){
     int status;
+    user_regs_struct registers = this->get_registers();
+    long edited = this->entry;
+    char entry_byte = this->get_byte(edited);
+    this->set_byte(edited, 0xcc);
     ptrace(PTRACE_SETOPTIONS, this->pid, 0, PTRACE_O_TRACESYSGOOD);
-    ptrace(PTRACE_CONT, pid, 0, 0);
+    ptrace(PTRACE_CONT, this->pid, 0, 0);
     if (errno != 0){
         perror("Error in Debugger::complete_syscall");
         errno = 0;
     }
     waitpid(pid, &status, 0);
+    registers = this->get_registers();
+    if (WSTOPSIG(status) == SIGTRAP){
+        registers.rip = registers.rip - 1;
+        this->set_byte(edited, entry_byte);
+    }
+    this->set_registers(registers);
+    registers = this->get_registers();
 }
 
 void Debugger::single_step(){
@@ -125,13 +138,24 @@ user_regs_struct Debugger::get_registers(){
     
 }
 
-int Debugger::get_word_dangerous(long location){
-    int read_word = ptrace(PTRACE_PEEKDATA, this->pid, location, 0);
+void Debugger::set_registers(user_regs_struct registers){
+    ptrace(PTRACE_SETREGS, pid, 0, &registers);
+    if (errno != 0){
+        perror("Error in Debugger::set_registers");
+        errno = 0;
+        //exit(0);
+    }
+    return;
+    
+}
+
+p_word Debugger::get_word_dangerous(long location){
+    p_word read_word = ptrace(PTRACE_PEEKDATA, this->pid, location, 0);
     return read_word;
 }
 
-int Debugger::get_word(long location){
-    int read_word = ptrace(PTRACE_PEEKDATA, this->pid, location, 0);
+p_word Debugger::get_word(long location){
+    p_word read_word = ptrace(PTRACE_PEEKDATA, this->pid, location, 0);
     if (errno != 0){
         perror("Error in Debugger::get_word");
         errno = 0;
@@ -140,8 +164,8 @@ int Debugger::get_word(long location){
     return read_word;
 }
 
-void Debugger::set_word(long location, int value){
-    int read_word = ptrace(PTRACE_POKEDATA, this->pid, location, value);
+void Debugger::set_word(long location, p_word value){
+    ptrace(PTRACE_POKEDATA, this->pid, location, value);
     if (errno != 0){
         perror("Error in Debugger::set_word");
         errno = 0;
@@ -149,17 +173,17 @@ void Debugger::set_word(long location, int value){
 }
 
 void Debugger::set_byte(long location, char value){
-    long aligned_location = location - (location % 4);
-    int valued = ((int) value) & 0xff;
-    int shift = (location % 4) * 8;
-    unsigned int mask = 0xffffffff ^ (0xff << shift);
-    unsigned int before = this->get_word(aligned_location);
-    cout << hex << before << dec << endl;
+    long aligned_location = location - (location % P_WORD_SIZE);
+    p_word valued = ((int) value) & 0xff;
+    int shift = (location % P_WORD_SIZE) * 8;
+    p_word  mask = ((p_word) -1) ^ (0xff << shift);
+    p_word before = this->get_word(aligned_location);
+    /*cout << hex << before << dec << endl;
     cout << hex << mask << dec << endl;
     cout << hex << (before & mask) << dec << endl;
     cout << hex << (int) valued << dec << endl;
-    cout << hex << (int) shift << dec << endl;
-    unsigned int result = (before & mask) | (valued << shift);
+    cout << hex << (int) shift << dec << endl;*/
+    p_word result = (before & mask) | (valued << shift);
     this->set_word(aligned_location, result);
 }
 

@@ -1,4 +1,4 @@
-git submodule foreach git pull
+git submodule foreach git pull origin master
 mkdir build
 set -e
 cd build

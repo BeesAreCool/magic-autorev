@@ -10,6 +10,9 @@
 
 using namespace std;
 
+typedef unsigned long p_word;
+#define P_WORD_SIZE 8
+
 class Debugger {
 
 private:
@@ -23,12 +26,13 @@ private:
 public:
     long entry;
     Debugger(char* processName, char** processArgs);
-    int get_word(long location);
-    int get_word_dangerous(long location);
+    p_word get_word(long location);
+    p_word get_word_dangerous(long location);
     char get_byte(long location);
-    void set_word(long location, int value);
+    void set_word(long location, p_word value);
     void set_byte(long location, char value);
     user_regs_struct get_registers();
+    void set_registers(user_regs_struct);
     void single_step();
     ZydisDecodedInstruction load_instruction(long rip);
     void get_edited_memory(long*, int*);

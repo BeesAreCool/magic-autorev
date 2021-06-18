@@ -35,7 +35,7 @@ int NUM_GOOD_CHARS = sizeof(GOOD_CHARS)/sizeof(char);
 
 void loadBuffer(Debugger* dbg, long location, char* result, int* length){
 
-    int read_word = dbg->get_word_dangerous(location);
+    p_word read_word = dbg->get_word_dangerous(location);
     if (errno != 0){
         length = 0;
         return;
@@ -48,12 +48,12 @@ void loadBuffer(Debugger* dbg, long location, char* result, int* length){
     int BUFFER_END = BUFFER_MID;
     //FOR RUNNING FORWARD
     bool bad_char = false;
-    for (int i=0; i + 4 < BUFFER_SIZE - BUFFER_MID && !bad_char; i += 4){
-        BUFFER_END += 4;
+    for (int i=0; i + P_WORD_SIZE < BUFFER_SIZE - BUFFER_MID && !bad_char; i += P_WORD_SIZE){
+        BUFFER_END += P_WORD_SIZE;
         read_word = dbg->get_word_dangerous(location+i);
         //printf("RUNNING FORWARD AT %i %08x\n", i, read_word);
-        *((int*) (buffer + BUFFER_MID + i)) = read_word;
-        for (int q =0; q < 4; q ++){
+        *((p_word*) (buffer + BUFFER_MID + i)) = read_word;
+        for (int q =0; q < P_WORD_SIZE; q ++){
             bool matched = false;
             for(int z = 0; z < NUM_GOOD_CHARS; z++){
                 if(buffer[BUFFER_MID+i+q] == GOOD_CHARS[z]){
@@ -74,12 +74,12 @@ void loadBuffer(Debugger* dbg, long location, char* result, int* length){
     }
     bad_char = false;
     //FOR RUNNING BACKWARDS
-    for (int i=-4; i - 4 > - BUFFER_MID && !bad_char; i-= 4){
-        BUFFER_START -= 4;
+    for (int i=-P_WORD_SIZE; i - P_WORD_SIZE > - BUFFER_MID && !bad_char; i-= P_WORD_SIZE){
+        BUFFER_START -= P_WORD_SIZE;
         read_word = dbg->get_word_dangerous(location+i);
         //printf("RUNNING BACKWARD AT %i %08x\n", i, read_word);
-        *((int*) (buffer + BUFFER_MID + i)) = read_word;
-        for (int q = 0; q <= 4; q ++){
+        *((p_word*) (buffer + BUFFER_MID + i)) = read_word;
+        for (int q = 0; q <= P_WORD_SIZE; q ++){
             bool matched = false;
             for(int z = 0; z < NUM_GOOD_CHARS; z++){
                 if(buffer[BUFFER_MID+i+q] == GOOD_CHARS[z]){
@@ -115,6 +115,7 @@ int main(int argc, char** argv){
     int location_count;
     set<string> seen;
     for(int i=0; i<10000000; i++){
+        //cout << i << " " << dbg.get_disasm() << endl;
         dbg.get_edited_memory(locations, &location_count);
         dbg.single_step();
         for(int q=0; q<location_count; q++){
