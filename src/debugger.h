@@ -30,8 +30,8 @@ public:
     p_word get_word(long location);
     p_word get_word_dangerous(long location);
     char get_byte(long location);
-    void set_word(long location, p_word value);
-    void set_byte(long location, char value);
+    bool set_word(long location, p_word value);
+    bool set_byte(long location, char value);
     user_regs_struct get_registers();
     void set_registers(user_regs_struct);
     void single_step();

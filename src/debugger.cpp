@@ -92,7 +92,11 @@ void Debugger::complete_entry(){
     user_regs_struct registers = this->get_registers();
     long edited = this->entry;
     char entry_byte = this->get_byte(edited);
-    this->set_byte(edited, 0xcc);
+    //If it fails to set the entry byte, just continue on through the library load routine
+    if(!this->set_byte(edited, 0xcc)){
+        this->set_byte(edited, entry_byte);
+        return;
+    }
     ptrace(PTRACE_SETOPTIONS, this->pid, 0, PTRACE_O_TRACESYSGOOD);
     ptrace(PTRACE_CONT, this->pid, 0, 0);
     if (errno != 0){
@@ -168,15 +172,17 @@ p_word Debugger::get_word(long location){
     return read_word;
 }
 
-void Debugger::set_word(long location, p_word value){
+bool Debugger::set_word(long location, p_word value){
     ptrace(PTRACE_POKEDATA, this->pid, location, value);
     if (errno != 0){
         perror("Error in Debugger::set_word");
         errno = 0;
+        return false;
     }
+    return true;
 }
 
-void Debugger::set_byte(long location, char value){
+bool Debugger::set_byte(long location, char value){
     long aligned_location = location - (location % P_WORD_SIZE);
     p_word valued = ((int) value) & 0xff;
     int shift = (location % P_WORD_SIZE) * 8;
@@ -188,7 +194,7 @@ void Debugger::set_byte(long location, char value){
     cout << hex << (int) valued << dec << endl;
     cout << hex << (int) shift << dec << endl;*/
     p_word result = (before & mask) | (valued << shift);
-    this->set_word(aligned_location, result);
+    return this->set_word(aligned_location, result);
 }
 
 char Debugger::get_byte(long location){
