@@ -33,6 +33,7 @@ Debugger::Debugger(char* processName, char** processArgs){
     Elf64_Ehdr *ehdr = (Elf64_Ehdr*)parsed.get_memory_map();
     this->entry = ehdr->e_entry + 0x555555554000;
     this->initialize_zydis(true);
+    this->exited = false;
     pid_t pid = fork();
     if (pid){
         int status;
@@ -116,6 +117,9 @@ void Debugger::single_step(){
         errno = 0;
     }
     waitpid(this->pid, &status, 0);
+    if (status == 0){
+        this->exited = true;
+    }
 }
 
 user_regs_struct Debugger::get_registers(){

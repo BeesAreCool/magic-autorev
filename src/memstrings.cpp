@@ -105,29 +105,35 @@ void loadBuffer(Debugger* dbg, long location, char* result, int* length){
     memcpy(result, (buffer + BUFFER_START), *length+1);
 }
 
-int main(int argc, char** argv){
-    Debugger dbg = Debugger(argv[1], argv+1);
-    cout << hex << dbg.entry << dec << endl;
-    cout << dbg.get_disasm() << endl;
+set<string> getMemStrings(char* processName, char ** args){
+    Debugger dbg = Debugger(processName, args);
     long* locations = new long[32];
     char* current_string = new char[1024];
     int string_length;
     int location_count;
     set<string> seen;
-    for(int i=0; i<10000000; i++){
+    for(int i=0; i<1000000; i++){
         //cout << i << " " << dbg.get_disasm() << endl;
         dbg.get_edited_memory(locations, &location_count);
         dbg.single_step();
+        if(dbg.exited){
+            cout << "Program exited after executing " << i << " instructions!" << endl;
+            return seen;
+        }
         for(int q=0; q<location_count; q++){
             loadBuffer(&dbg, locations[q], current_string, &string_length);
             if (string_length > 6){
                 string current = current_string;
                 if (seen.find(current) == seen.end()){
                     seen.insert(current);
-                    cout << current_string << endl;
+                    cout << "Memstring #" << seen.size() << ": " << current_string << endl;
                 }
             }
         }
     }
-    return 0;
+    return seen;
+}
+
+int main(int argc, char** argv){
+    getMemStrings(argv[1], argv+1);
 }

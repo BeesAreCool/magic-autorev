@@ -5,4 +5,4 @@ cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make
 cd ..
-./build/MemStrings ./samples/problem
+#./build/MemStrings ./samples/problem

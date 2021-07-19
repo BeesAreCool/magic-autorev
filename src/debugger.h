@@ -25,6 +25,7 @@ private:
     void complete_entry();
 public:
     long entry;
+    bool exited;
     Debugger(char* processName, char** processArgs);
     p_word get_word(long location);
     p_word get_word_dangerous(long location);
