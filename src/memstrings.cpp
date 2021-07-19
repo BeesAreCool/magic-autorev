@@ -112,7 +112,7 @@ set<string> getMemStrings(char* processName, char ** args){
     int string_length;
     int location_count;
     set<string> seen;
-    for(int i=0; i<1000000; i++){
+    for(int i=0; i<1000000000; i++){
         //cout << i << " " << dbg.get_disasm() << endl;
         dbg.get_edited_memory(locations, &location_count);
         dbg.single_step();
@@ -131,6 +131,7 @@ set<string> getMemStrings(char* processName, char ** args){
             }
         }
     }
+    cout << "Program hit the instruction cap, this should rarely happen! Run something with less than 1 billion instructions maybe..." << endl;
     return seen;
 }
 
